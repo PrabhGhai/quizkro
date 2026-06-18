@@ -3,20 +3,23 @@
 export async function getQuizFromGemini(topic: string, askedQuestions: string[]) {
   try {
     const prompt = `You are a professional quiz master for an app called QuizKro. 
-    Generate a unique, highly accurate multiple-choice question about the topic: "${topic}".
+    Generate exactly 5 unique, highly accurate multiple-choice questions about the topic: "${topic}".
     
     CRITICAL STRUCTURE INSTRUCTIONS:
     1. Do NOT generate any of these previously asked questions to avoid repetition: ${JSON.stringify(askedQuestions)}.
     2. Provide the output strictly in English.
-    3. Provide the output strictly in this raw valid JSON format (no markdown code blocks, no text before or after):
+    3. Provide the output strictly in this raw valid JSON format containing an array under a "quiz" key (no markdown code blocks, no text before or after):
     {
-      "question": "The unique question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctIndex": 0,
-      "reason": "Clear explanation of the answer"
+      "quiz": [
+        {
+          "question": "Question text here",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctIndex": 0,
+          "reason": "Clear explanation of the answer"
+        }
+      ]
     }`;
 
-    // Now this will perfectly read from your .env.local file!
     const apiKey = process.env.GEMINI_API_KEY; 
     
     if (!apiKey) {
