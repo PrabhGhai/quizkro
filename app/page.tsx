@@ -12,13 +12,11 @@ interface Question {
 export default function QuizKroApp() {
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('Assembling 5 customized evaluation cards...');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
   
-  // Track active question index
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  
-  // Track answer selections per question layout index
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number | null }>({});
   const [answeredStates, setAnsweredStates] = useState<{ [key: number]: boolean }>({});
 
@@ -49,13 +47,27 @@ export default function QuizKroApp() {
     if (!topic.trim()) return;
     
     setLoading(true);
+    setLoadingStatus('Assembling 5 customized evaluation cards...');
     setQuestions([]); 
     setCurrentIndex(0);
     setSelectedAnswers({});
     setAnsweredStates({});
 
+    // ⏳ Trigger an informative status update if the server hits a high-demand retry delay
+    const statusTimer = setTimeout(() => {
+      setLoadingStatus('AI is experiencing high traffic demand right now. Hanging tight and retrying for you...');
+    }, 3500);
+
     try {
       const parsedData = await getQuizFromGemini(topic, askedQuestions);
+      
+      if (parsedData && parsedData.error) {
+        alert(`Notice: ${parsedData.error}`);
+        setLoading(false);
+        clearTimeout(statusTimer);
+        return;
+      }
+
       if (parsedData && parsedData.quiz) {
         setQuestions(parsedData.quiz);
         const incomingTitles = parsedData.quiz.map((q: Question) => q.question);
@@ -63,8 +75,9 @@ export default function QuizKroApp() {
       }
     } catch (error) {
       console.error("Quiz Fetch Error:", error);
-      alert("Failed to generate custom quiz. Please try again!");
+      alert("The system timed out. Please check your network and try again!");
     } finally {
+      clearTimeout(statusTimer);
       setLoading(false);
     }
   };
@@ -147,15 +160,17 @@ export default function QuizKroApp() {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Dynamic Contextual Loader State */}
         {loading && (
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-10 shadow-xl flex flex-col items-center justify-center gap-4 animate-pulse">
+          <div className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-10 shadow-xl flex flex-col items-center justify-center text-center gap-4 animate-pulse">
             <div className="w-10 h-10 border-4 border-t-indigo-500 border-indigo-500/20 rounded-full animate-spin"></div>
-            <p className="text-sm font-medium text-slate-400 tracking-wide">Assembling 5 customized evaluation cards...</p>
+            <p className="text-sm font-medium text-slate-400 max-w-sm leading-relaxed tracking-wide transition-all duration-300">
+              {loadingStatus}
+            </p>
           </div>
         )}
 
-        {/* 📋 Premium Single-Card Presentation View */}
+        {/* Premium Single-Card Presentation View */}
         {questions.length > 0 && !loading && currentQuestion && (
           <div className="bg-slate-900/40 border border-slate-800/70 rounded-3xl p-6 shadow-xl flex flex-col gap-4 transition-all duration-300">
             
@@ -174,7 +189,7 @@ export default function QuizKroApp() {
               ❓ {currentQuestion.question}
             </h3>
 
-            {/* Clean Interlocutor Option Button Mapping */}
+            {/* Option Mapping */}
             <div className="flex flex-col gap-2.5 mt-2">
               {currentQuestion.options.map((option, oIdx) => {
                 let optionStyle = "bg-slate-950 border-slate-800/80 text-slate-300 hover:border-slate-700";
@@ -204,7 +219,7 @@ export default function QuizKroApp() {
               })}
             </div>
 
-            {/* Bottom Panel Dynamic Transition Layout */}
+            {/* Bottom Panel */}
             {isCurrentAnswered && (
               <div className="mt-2 p-4 rounded-2xl bg-slate-950 border border-slate-800/60 text-xs sm:text-sm flex flex-col gap-4 animate-fadeIn">
                 <div>
@@ -220,7 +235,6 @@ export default function QuizKroApp() {
                   </p>
                 </div>
 
-                {/* Conditional Next vs Final Complete Button Handling */}
                 {currentIndex < questions.length - 1 ? (
                   <button
                     onClick={handleNext}
@@ -235,7 +249,6 @@ export default function QuizKroApp() {
                       🏁 Quiz Module Completed successfully!
                     </div>
                     
-                    {/* 🔄 Infinite Generation Loop Button */}
                     <button
                       onClick={handleGenerateQuiz}
                       disabled={loading}
@@ -252,7 +265,7 @@ export default function QuizKroApp() {
 
       </div>
 
-      {/* Profile Branding Footer */}
+      {/* Footer */}
       <footer className="mt-12 text-[12px] text-slate-500 font-medium tracking-wide flex items-center gap-1">
         <span>Product built by</span>
         <a 
